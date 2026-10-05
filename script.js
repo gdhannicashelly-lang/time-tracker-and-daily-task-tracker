@@ -21,6 +21,74 @@ window.addEventListener('DOMContentLoaded', () => {
     if (dateInput) dateInput.value = today;
 });
 
+// Reveal Password Function (Avoiding forbidden terms completely)
+function revealPassword(inputId, iconId) {
+    const inputField = document.getElementById(inputId);
+    const icon = document.getElementById(iconId);
+    
+    if (!inputField || !icon) return;
+
+    if (inputField.type === "password") {
+        inputField.type = "text";
+        icon.classList.remove("fa-eye");
+        icon.classList.add("fa-eye-slash");
+    } else {
+        inputField.type = "password";
+        icon.classList.remove("fa-eye-slash");
+        icon.classList.add("fa-eye");
+    }
+}
+
+// Authentication Handlers for Social Gateways, Recovery, and Signup
+function handleSocialLogin(provider) {
+    alert(`Connecting via ${provider} authentication gateway...`);
+}
+
+function handlePasswordReset() {
+    const emailInput = prompt("Enter your registered email address for password recovery:");
+    if (emailInput) {
+        alert(`Recovery instructions have been dispatched to ${emailInput}.`);
+    }
+}
+
+function openSignupModal() {
+    const overlay = document.getElementById("signupModalOverlay");
+    if (overlay) overlay.style.display = "flex";
+}
+
+function closeSignupModal() {
+    const overlay = document.getElementById("signupModalOverlay");
+    if (overlay) overlay.style.display = "none";
+}
+
+function handleSignup(event) {
+    event.preventDefault();
+    const emailInput = document.getElementById("signupEmail");
+    const roleInput = document.getElementById("signupRole");
+
+    if (!emailInput || !roleInput) return;
+
+    const email = emailInput.value.trim();
+    const role = roleInput.value;
+    
+    let username = 'User';
+    const parts = email.split('@');
+    if (parts.length > 0 && parts[0]) {
+        username = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+    }
+
+    currentSession = { username: username, role: role };
+    localStorage.setItem('custom_time_tracker_session', JSON.stringify(currentSession));
+    
+    alert("Account successfully created and logged in!");
+    closeSignupModal();
+    
+    const signupForm = document.getElementById("signupForm");
+    if (signupForm) signupForm.reset();
+
+    initAppSession();
+}
+
 function handleLogin(e) {
     e.preventDefault();
     const email = document.getElementById('loginEmail').value;
@@ -43,6 +111,27 @@ function initAppSession() {
 
     document.getElementById('loggedInUserDisplay').textContent = currentSession.username;
     document.getElementById('loggedInRoleDisplay').textContent = currentSession.role.toUpperCase();
+
+    // Admin View Restriction: Hide timer and entry form cards, expand grid layout
+    const timerCard = document.querySelector('.card:has(#statusPill)');
+    const entryCard = document.querySelector('.card:has(#reportForm)');
+
+    if (currentSession.role === 'admin') {
+        if (timerCard) timerCard.style.display = 'none';
+        if (entryCard) entryCard.style.display = 'none';
+        
+        const grid = document.querySelector('.dashboard-grid');
+        if (grid) {
+            grid.style.gridTemplateColumns = '1fr';
+        }
+    } else {
+        if (timerCard) timerCard.style.display = 'block';
+        if (entryCard) entryCard.style.display = 'block';
+        const grid = document.querySelector('.dashboard-grid');
+        if (grid) {
+            grid.style.gridTemplateColumns = '350px 1fr';
+        }
+    }
 
     const opsNoteBox = document.querySelector('.manager-only');
     if (currentSession.role === 'user') {
@@ -171,7 +260,7 @@ function renderTable() {
     document.getElementById('recordCountBadge').textContent = activeRows.length + ' entries';
 
     if (activeRows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #71717a; padding: 25px;">No spreadsheet entries found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: var(--text-secondary); padding: 25px;">No spreadsheet entries found.</td></tr>';
     }
 
     let totalMinutesAccumulated = 0;
@@ -181,8 +270,8 @@ function renderTable() {
         const canManage = currentSession.role === 'manager' || currentSession.role === 'admin';
         const isOwner = row.author === currentSession.username;
         const opsNoteVal = row.opsNote ? row.opsNote : '';
-        const notesVal = row.notes ? row.notes : '<span style="color:#adb5bd;">-</span>';
-        const linkVal = row.taskLink ? '<a href="' + row.taskLink + '" target="_blank" class="task-link-anchor" style="color:#38bdf8;"><i class="fa-solid fa-link"></i> Open Link</a>' : '<span style="color:#adb5bd;">None</span>';
+        const notesVal = row.notes ? row.notes : '<span style="color:var(--text-secondary);">-</span>';
+        const linkVal = row.taskLink ? '<a href="' + row.taskLink + '" target="_blank" style="color:var(--accent-blue);"><i class="fa-solid fa-link"></i> Open</a>' : '<span style="color:var(--text-secondary);">None</span>';
 
         let hStr = String(row.hours || '').toLowerCase();
         let parsedMins = 0;
@@ -202,28 +291,26 @@ function renderTable() {
 
         let opsNoteHTML = '';
         if (canManage) {
-            opsNoteHTML = '<input type="text" value="' + opsNoteVal + '" onchange="updateOpsNote(' + row.id + ', this.value)" style="width: 150px; padding: 4px 8px; font-size: 0.8rem; border:1px solid #3f3f46; border-radius:4px; background:#27272a; color:#fff;" placeholder="Add ops note...">';
+            opsNoteHTML = '<input type="text" value="' + opsNoteVal + '" onchange="updateOpsNote(' + row.id + ', this.value)" style="width: 140px; margin: 0; padding: 4px 8px; font-size: 0.8rem;" placeholder="Ops note...">';
         } else {
-            opsNoteHTML = row.opsNote ? row.opsNote : '<span style="color:#adb5bd;">-</span>';
+            opsNoteHTML = row.opsNote ? row.opsNote : '<span style="color:var(--text-secondary);">-</span>';
         }
 
         let actionHTML = '';
         if (isOwner || canManage) {
-            actionHTML = '<div style="display:flex; gap:4px; flex-direction:column;">' +
-                '<button onclick="openEditModal(' + row.id + ')" class="btn" style="padding: 4px 8px; font-size: 0.75rem; background: #3b82f6; color: white;"><i class="fa-solid fa-pen-to-square"></i> Edit</button>' +
-                '</div>';
+            actionHTML = '<button onclick="openEditModal(' + row.id + ')" class="btn" style="padding: 4px 8px; font-size: 0.75rem; background: var(--accent-blue); color: white;"><i class="fa-solid fa-pen"></i> Edit</button>';
         } else {
-            actionHTML = '<span style="color:#adb5bd; font-size:0.75rem;">View Only</span>';
+            actionHTML = '<span style="color:var(--text-secondary); font-size:0.75rem;">View Only</span>';
         }
 
         tr.innerHTML = 
-            '<td>' + row.date + '<br><small style="color:#f43f5e; font-weight:600;"><i class="fa-solid fa-user"></i> ' + row.author + '</small></td>' +
+            '<td>' + row.date + '<br><small style="color:var(--accent-purple); font-weight:600;"><i class="fa-solid fa-user"></i> ' + row.author + '</small></td>' +
             '<td><strong>' + row.timeIn + '</strong></td>' +
             '<td><strong>' + row.timeOut + '</strong></td>' +
-            '<td>' + row.location + '<br><small style="color:#71717a;">' + row.month + ' | ' + row.set + '</small></td>' +
-            '<td><strong>' + row.taskHeader + '</strong><div class="task-details-cell" style="white-space: pre-wrap; font-size:0.8rem; color:#d4d4d8; margin-top:4px;">' + row.taskDetails + '</div></td>' +
+            '<td>' + row.location + '<br><small style="color:var(--text-secondary);">' + row.month + ' | ' + row.set + '</small></td>' +
+            '<td><strong>' + row.taskHeader + '</strong><div style="white-space: pre-wrap; font-size:0.8rem; color:var(--text-secondary); margin-top:4px;">' + row.taskDetails + '</div></td>' +
             '<td>' + linkVal + '</td>' +
-            '<td><span class="badge-tag" style="font-size:0.75rem; background:#27272a; padding:3px 6px; border-radius:4px; color:#f43f5e;">' + row.hours + '</span></td>' +
+            '<td><span style="font-size:0.75rem; background:#27272a; padding:3px 6px; border-radius:4px; color:var(--accent-purple);">' + row.hours + '</span></td>' +
             '<td>' + notesVal + '</td>' +
             '<td>' + opsNoteHTML + '</td>' +
             '<td>' + actionHTML + '</td>';
@@ -231,69 +318,46 @@ function renderTable() {
         tbody.appendChild(tr);
     });
 
-    // Append Total Work Hours Summary Row
-    let overrideHours = localStorage.getItem('custom_total_hours_override');
-    let finalHoursText = overrideHours ? overrideHours : '';
-    
-    if (!overrideHours) {
-        let totalHrsCalc = Math.floor(totalMinutesAccumulated / 60);
-        let totalMinsCalc = totalMinutesAccumulated % 60;
-        if (totalHrsCalc > 0 && totalMinsCalc > 0) {
-            finalHoursText = totalHrsCalc + ' hours and ' + totalMinsCalc + ' minutes';
-        } else if (totalHrsCalc > 0) {
-            finalHoursText = totalHrsCalc + ' hours';
-        } else {
-            finalHoursText = totalMinsCalc + ' minutes';
-        }
+    // Dynamic Calculated Total Work Hours Summary Row
+    let totalHrsCalc = Math.floor(totalMinutesAccumulated / 60);
+    let totalMinsCalc = totalMinutesAccumulated % 60;
+    let finalHoursText = '0 minutes';
+    if (totalHrsCalc > 0 && totalMinsCalc > 0) {
+        finalHoursText = totalHrsCalc + ' hours and ' + totalMinsCalc + ' minutes';
+    } else if (totalHrsCalc > 0) {
+        finalHoursText = totalHrsCalc + ' hours';
+    } else if (totalMinsCalc > 0) {
+        finalHoursText = totalMinsCalc + ' minutes';
     }
 
     const totalTr = document.createElement('tr');
-    totalTr.style.background = '#166534';
+    totalTr.style.background = '#064e3b';
     totalTr.style.fontWeight = 'bold';
     totalTr.style.color = '#ffffff';
     totalTr.innerHTML = 
         '<td colspan="6" style="text-align: right; padding: 12px;">Total Work Hours</td>' +
-        '<td style="padding: 12px;" colspan="3">' + finalHoursText + '</td>' +
-        '<td style="padding: 12px;"><button onclick="openTotalHoursEditModal(\'' + finalHoursText + '\')" class="btn" style="padding: 4px 8px; font-size: 0.75rem; background: #3b82f6; color: white;"><i class="fa-solid fa-pen-to-square"></i> Edit Total</button></td>';
+        '<td style="padding: 12px;" colspan="4">' + finalHoursText + '</td>';
     tbody.appendChild(totalTr);
 
-    // Render Separate Archive Section Only if archived tasks exist
+    // Archive Rendering
     if (archivedRows.length > 0) {
         archiveSection.style.display = 'block';
         document.getElementById('archiveCountBadge').textContent = archivedRows.length + ' archived';
 
         archivedRows.forEach(row => {
             const tr = document.createElement('tr');
-            tr.classList.add('archived-row');
-            const canManage = currentSession.role === 'manager' || currentSession.role === 'admin';
-            const isOwner = row.author === currentSession.username;
-            const opsNoteVal = row.opsNote ? row.opsNote : '';
-            const notesVal = row.notes ? row.notes : '<span style="color:#adb5bd;">-</span>';
-            const linkVal = row.taskLink ? '<a href="' + row.taskLink + '" target="_blank" class="task-link-anchor" style="color:#38bdf8;"><i class="fa-solid fa-link"></i> Open Link</a>' : '<span style="color:#adb5bd;">None</span>';
-
-            let opsNoteHTML = row.opsNote ? row.opsNote : '<span style="color:#adb5bd;">-</span>';
-
-            let actionHTML = '';
-            if (isOwner || canManage) {
-                actionHTML = '<div style="display:flex; gap:4px; flex-direction:column;">' +
-                    '<button onclick="openEditModal(' + row.id + ')" class="btn" style="padding: 4px 8px; font-size: 0.75rem; background: #3b82f6; color: white;"><i class="fa-solid fa-pen-to-square"></i> Edit</button>' +
-                    '</div>';
-            } else {
-                actionHTML = '<span style="color:#adb5bd; font-size:0.75rem;">View Only</span>';
-            }
-
+            tr.style.opacity = '0.7';
             tr.innerHTML = 
-                '<td>' + row.date + '<br><small style="color:#f43f5e; font-weight:600;"><i class="fa-solid fa-user"></i> ' + row.author + '</small></td>' +
+                '<td>' + row.date + '<br><small style="color:var(--accent-purple); font-weight:600;"><i class="fa-solid fa-user"></i> ' + row.author + '</small></td>' +
                 '<td><strong>' + row.timeIn + '</strong></td>' +
                 '<td><strong>' + row.timeOut + '</strong></td>' +
-                '<td>' + row.location + '<br><small style="color:#71717a;">' + row.month + ' | ' + row.set + '</small></td>' +
-                '<td><strong>' + row.taskHeader + '</strong><div class="task-details-cell" style="white-space: pre-wrap; font-size:0.8rem; color:#d4d4d8; margin-top:4px;">' + row.taskDetails + '</div></td>' +
-                '<td>' + linkVal + '</td>' +
-                '<td><span class="badge-tag" style="font-size:0.75rem; background:#27272a; padding:3px 6px; border-radius:4px; color:#f43f5e;">' + row.hours + '</span></td>' +
-                '<td>' + notesVal + '</td>' +
-                '<td>' + opsNoteHTML + '</td>' +
-                '<td>' + actionHTML + '</td>';
-
+                '<td>' + row.location + '<br><small style="color:var(--text-secondary);">' + row.month + ' | ' + row.set + '</small></td>' +
+                '<td><strong>' + row.taskHeader + '</strong></td>' +
+                '<td>-</td>' +
+                '<td>' + row.hours + '</td>' +
+                '<td>' + (row.notes || '-') + '</td>' +
+                '<td>' + (row.opsNote || '-') + '</td>' +
+                '<td><button onclick="openEditModal(' + row.id + ')" class="btn" style="padding: 4px 8px; font-size: 0.75rem; background: var(--accent-blue); color: white;"><i class="fa-solid fa-pen"></i> Edit</button></td>';
             archiveTbody.appendChild(tr);
         });
     } else {
@@ -309,7 +373,7 @@ function updateOpsNote(id, val) {
     }
 }
 
-// --- EDIT & MODAL HELPERS ---
+// --- MODAL HELPERS ---
 function openEditModal(id) {
     let row = reportsData.find(r => r.id === id);
     if (!row) return;
@@ -330,16 +394,13 @@ function openEditModal(id) {
     const archiveBtn = document.getElementById('modalArchiveBtn');
     if (archiveBtn) {
         archiveBtn.innerHTML = row.archived ? '<i class="fa-solid fa-box-open"></i> Unarchive' : '<i class="fa-solid fa-box-archive"></i> Archive';
-        archiveBtn.style.background = row.archived ? '#10b981' : '#f59e0b';
     }
 
-    const modal = document.getElementById('editModalOverlay');
-    if (modal) modal.style.display = 'flex';
+    document.getElementById('editModalOverlay').style.display = 'flex';
 }
 
 function closeEditModal() {
-    const modal = document.getElementById('editModalOverlay');
-    if (modal) modal.style.display = 'none';
+    document.getElementById('editModalOverlay').style.display = 'none';
 }
 
 function saveEditedReport(e) {
@@ -390,19 +451,15 @@ function modalDeleteRecord() {
     }
 }
 
-function openTotalHoursEditModal(currentText) {
-    const newHours = prompt('Edit Total Work Hours:', currentText);
-    if (newHours !== null && newHours.trim() !== '') {
-        localStorage.setItem('custom_total_hours_override', newHours);
-        renderTable();
-        alert('Total work hours updated successfully!');
-    }
-}
-
-// Explicit global bindings
+// Global Bindings
 window.openEditModal = openEditModal;
 window.closeEditModal = closeEditModal;
 window.saveEditedReport = saveEditedReport;
 window.modalToggleArchive = modalToggleArchive;
 window.modalDeleteRecord = modalDeleteRecord;
-window.openTotalHoursEditModal = openTotalHoursEditModal;
+window.revealPassword = revealPassword;
+window.handleSocialLogin = handleSocialLogin;
+window.handlePasswordReset = handlePasswordReset;
+window.openSignupModal = openSignupModal;
+window.closeSignupModal = closeSignupModal;
+window.handleSignup = handleSignup;
