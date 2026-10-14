@@ -1,0 +1,19 @@
+{
+  "name": "Time & Task Tracker Pro",
+  "short_name": "TimeTracker",
+  "description": "Mobile-responsive Time and Task Tracker with role-based access control and live audit logs.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3209/3209990.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
